@@ -36,8 +36,16 @@ namespace CompareFiles
 
         static void Main(string[] args)
         {
-            var lines1 = ReadCsv(@"C:\Users\student\Desktop\dan\raw1.csv");
-            var lines2 = ReadCsv(@"C:\Users\student\Desktop\dan\raw2.csv");
+            var filename1 = @"C:\Users\student\Desktop\dan\CompareFiles\raw1.csv";
+            var filename2 = @"C:\Users\student\Desktop\dan\CompareFiles\raw2.csv";
+            if (args.Length == 2)
+            {
+                filename1 = args[0];
+                filename2 = args[1];
+            }
+
+            var lines1 = ReadCsv(filename1);
+            var lines2 = ReadCsv(filename2);
 
             Compare(lines1, lines2);
 
@@ -75,33 +83,25 @@ namespace CompareFiles
 
             for (int i = 0; i < lines1.Count; i++)
             {
-                if (i > lines2.Count)
+                if (i > lines2.Count -1)
                     return;
 
                 var line1 = ParseLine(lines1[i]);
                 var line2 = ParseLine(lines2[i]);
+                var template = $"{lines1[i]},{lines2[i]},{(i * 4):X8}";
+                var template2 = "";
 
-                if (line1[0] == line2[0] &&
-                    line1[1] == line2[1] &&
-                    line1[2] == line2[2] &&
-                    line1[3] == line2[3] &&
-                    line1[0] == 0x0 &&
-                    line1[1] == 0x0 &&
-                    line1[2] == 0x0 &&
-                    line1[3] == 0x0
-                    )
+                // Check if both values aren't equal to 0
+                if (lines1[i] == lines2[i] && lines2[i] == "00000000")
                 {
-                    Log($"{lines1[i]},{lines2[i]},unknown");
-                    continue;
+                    template2 = "unknown";
+                    goto end;
                 }
 
-                if (line1[0] == line2[0] &&
-                    line1[1] == line2[1] &&
-                    line1[2] == line2[2] &&
-                    line1[3] == line2[3])
+                if (lines1[i] == lines2[i])
                 {
-                    Log($"{lines1[i]},{lines2[i]},bytes");
-                    continue;
+                    template2 = "bytes";
+                    goto end;
                 }
 
                 if (line1[0] == line2[1] &&
@@ -109,47 +109,49 @@ namespace CompareFiles
                     line1[2] == line2[3] &&
                     line1[3] == line2[2])
                 {
-                    Log($"{lines1[i]},{lines2[i]},short");
-                    continue;
+                    template2 = "short";
+                    goto end;
                 }
 
                 if (line1[0] == line2[3] &&
-                            line1[1] == line2[2] &&
-                            line1[2] == line2[1] &&
-                            line1[3] == line2[0])
+                    line1[1] == line2[2] &&
+                    line1[2] == line2[1] &&
+                    line1[3] == line2[0])
                 {
-                    Log($"{lines1[i]},{lines2[i]},int");
-                    continue;
+                    template2 = "int";
+                    goto end;
                 }
 
-                if (line1[0] != line2[0] &&
-                        line1[1] != line2[1] &&
-                        line1[2] != line2[2] &&
-                        line1[3] != line2[3])
+                if (lines1[i] != lines2[i])
                 {
-                    Log($"{lines1[i]},{lines2[i]},different");
-                    continue;
+                    template2 = "different";
+                    goto end;
                 }
+
+            end:
+                Log($"{template},{template2}");
 
             }
         }
 
         private static byte[] ParseLine(string input)
         {
-            uint output = 0;
+            uint output = 0xCDCDCDCD;
             uint.TryParse(input, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out output);
+            if (output == 0xCDCDCDCD)
+                throw new Exception($"Cannot parse as a hex number: {input}");
+
             var bytes = BitConverter.GetBytes(output);
             return bytes;
         }
 
-        public static class MemberInfoGetting
+        public static class MemberInfoGetting // from stackoverflow.com/questions/9801624/get-name-of-a-variable-or-parameter
         {
             public static string GetMemberName<T>(Expression<Func<T>> memberExpression)
             {
-                MemberExpression expressionBody = (MemberExpression)memberExpression.Body;
+                var expressionBody = (MemberExpression)memberExpression.Body;
                 return expressionBody.Member.Name;
             }
         }
-
     }
 }
